@@ -1,95 +1,84 @@
-# Habit Auth C# (.NET) Client SDK
+# Habit Auth C# (.NET) Client SDK & Complete Example Solutions
 
-Official zero-dependency C# client library for Habit Auth enterprise software licensing and anti-tamper security.
+Official C# client integration library and full source code examples (WinForms Form1 + Main Page, Console application) for **Habit Auth** enterprise software licensing and anti-tamper security.
 
-[![Website](https://img.shields.io/badge/Official_Website-habitauth.com-0284c7?style=flat-square)](https://habitauth.com)
-[![Documentation](https://img.shields.io/badge/Developer_Docs-habitauth.com%2Fdocs-2563eb?style=flat-square)](https://habitauth.com/docs)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Website](https://img.shields.io/badge/Official_Website-habitauth.com-6366f1.svg)](https://habitauth.com)
+[![Documentation](https://img.shields.io/badge/Documentation-habitauth.com/docs-10b981.svg)](https://habitauth.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+---
+
+## Solution Structure
+
+This repository includes a complete Visual Studio solution with two fully functional projects:
+
+```
+habitauth-csharp/
+├── HabitAuth.sln                         # Visual Studio Solution file
+├── HabitAuth-WinForms-Example/           # Complete Windows Forms Application
+│   ├── HabitAuth-WinForms-Example.csproj
+│   ├── Form1.cs                          # Login & Register GUI Form (Form1)
+│   ├── Form1.Designer.cs
+│   ├── Form1.resx
+│   ├── Main.cs                           # Main Dashboard Page (shown after login)
+│   ├── Main.Designer.cs
+│   ├── Main.resx
+│   ├── HabitAuth.cs                      # Core Habit Auth SDK
+│   ├── Program.cs
+│   ├── App.config
+│   └── Properties/
+│       └── AssemblyInfo.cs
+└── HabitAuth-Console-Example/            # Interactive Console Application
+    ├── HabitAuth-Console-Example.csproj
+    ├── HabitAuth.cs                      # Core Habit Auth SDK
+    └── Program.cs                        # Interactive menu (Login, Register, Key, HWID)
+```
 
 ---
 
 ## Features
 
-- **Zero External NuGet Dependencies:** Runs on standard .NET BCL libraries without external third-party packages.
-- **Broad Runtime Compatibility:** Full backward and forward compatibility across .NET Framework 4.5 through 4.8, .NET Core 3.1, .NET 5, 6, 7, 8, 9, 10, Unity, and Mono.
-- **Dual Cryptographic Verification:** Verifies both RFC 8032 Ed25519 asymmetric signatures and symmetric HMAC-SHA256 digests.
-- **Anti-Replay Protection:** Enforces dynamic client-server clock drift synchronization with strict anti-replay validation.
-- **Integrated HWID Engine:** Deep multi-attribute hardware identification with spoof detection.
-- **Automated Telemetry:** Background thread heartbeat monitoring with remote instant process termination.
+- **Zero Third-Party Dependencies:** Works out of the box on standard .NET BCL libraries without external NuGet packages.
+- **Cross-Framework Compatibility:** Compatible with .NET Framework 4.5 through 4.8, .NET Core 3.1, .NET 5, 6, 7, 8, 9, 10, and Unity Mono.
+- **Hardware-ID (HWID) Locking:** Automatically generates unique SHA-256 machine hardware fingerprints.
+- **WinForms GUI Included:** Pre-built modern dark theme Login window (`Form1`) and Post-Login Dashboard (`Main`).
+- **Remote Killswitch & Heartbeat:** Background session verification ensuring immediate termination if a license is revoked.
 
 ---
 
-## Quick Integration
+## Quick Setup
 
-### 1. Add `HabitAuth.cs` to Your Project
-
-Copy `HabitAuth.cs` directly into your Visual Studio project (Windows Forms, WPF, Console, or Unity).
-
-### 2. Initialization & Authentication
+1. Open `HabitAuth.sln` in Visual Studio 2019 / 2022.
+2. Open `Form1.cs` or `Program.cs` and replace the configuration constants with your credentials from [habitauth.com](https://habitauth.com):
 
 ```csharp
-using System;
-using HabitAuth;
+private const string AppId = "your_application_id_here";
+private const string AppSecret = "your_application_secret_here";
+private const string Version = "1.0.0";
+```
 
-namespace MyApp
+3. Build and Run!
+
+---
+
+## Code Example
+
+```csharp
+using HabitAuthSDK;
+
+// 1. Initialize
+HabitAuth.Setup("app_c0049143710d4e5c", "sec_...", "1.0.0");
+var init = await HabitAuth.InitializeAsync();
+
+// 2. Login
+var login = await HabitAuth.LoginAsync("username", "password");
+if (login.Success)
 {
-    class Program
-    {
-        // 1. Configure HabitAuth credentials
-        public static HabitAuthApp Auth = new HabitAuthApp(
-            name: "YOUR_APP_NAME",
-            ownerid: "YOUR_APP_ID",
-            secret: "YOUR_APP_SECRET",
-            version: "1.0",
-            publicKey: "YOUR_ED25519_PUBLIC_KEY"
-        );
-
-        static void Main()
-        {
-            // 2. Establish cryptographically verified session
-            if (!Auth.init())
-            {
-                Console.WriteLine("Init failed: " + Auth.response.message);
-                return;
-            }
-
-            // 3. User Login
-            if (Auth.login("demo_user", "password123"))
-            {
-                Console.WriteLine("Login successful! Welcome " + Auth.user.username);
-                Console.WriteLine("Expiration: " + Auth.user.expires_at);
-
-                // 4. Start background heartbeat telemetry (every 30s)
-                Auth.start_heartbeat(30);
-            }
-            else
-            {
-                Console.WriteLine("Login failed: " + Auth.response.message);
-            }
-        }
-    }
+    Console.WriteLine("Welcome, " + HabitAuth.User.Username);
+    Console.WriteLine("Subscription: " + HabitAuth.User.Subscription);
 }
 ```
 
 ---
 
-## Available Methods
-
-| Method | Parameters | Description |
-| :--- | :--- | :--- |
-| `init()` | `token = null` | Performs initial anti-tamper handshake, syncs clock offset, and retrieves app configuration. |
-| `login()` | `username, password` | Authenticates an existing user account with HWID lock enforcement. |
-| `register()` | `username, password, licenseKey` | Creates a new user account bound to an unused license key. |
-| `license()` | `licenseKey` | Instant 1-key direct license login without credentials. |
-| `reset_hwid()` | `username` | Self-service hardware reset subject to administrator cooldown rules. |
-| `start_heartbeat()` | `intervalSeconds = 30` | Initiates background telemetry thread. Automatically terminates client if session is revoked. |
-| `stop_heartbeat()` | None | Gracefully stops the telemetry heartbeat thread. |
-
----
-
-## Documentation & Support
-
-- **Full Documentation:** [https://habitauth.com/docs](https://habitauth.com/docs)
-- **Official Portal:** [https://habitauth.com](https://habitauth.com)
-- **YouTube:** [https://youtube.com/@habitauth](https://youtube.com/@habitauth)
-- **Technical Support:** support@habitauth.com
+(C) 2026 Habit Auth. All rights reserved.
